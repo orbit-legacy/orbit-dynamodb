@@ -1,2 +1,2 @@
-Orbit MongoDB Extension
+Orbit DynamoDB Extension
 ============
