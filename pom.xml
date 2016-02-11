@@ -35,7 +35,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     <url>https://github.com/electronicarts/orbit-dynamodb/</url>
 
     <properties>
-        <orbit.version>0.8.0-SNAPSHOT</orbit.version>
+        <orbit.version>0.8.0-preview1</orbit.version>
         <project.target.jdk>1.8</project.target.jdk>
         <project.source.jdk>1.8</project.source.jdk>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
