@@ -7,4 +7,4 @@ install:
 
 before_script:
   - java -Djava.library.path=/tmp/dynamodb/DynamoDBLocal_lib -jar /tmp/dynamodb/DynamoDBLocal.jar -inMemory &
-  - sleep 2
+  - sleep 30
