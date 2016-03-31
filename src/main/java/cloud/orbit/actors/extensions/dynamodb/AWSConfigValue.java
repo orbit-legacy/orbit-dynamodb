@@ -28,20 +28,37 @@
 
 package cloud.orbit.actors.extensions.dynamodb;
 
-import cloud.orbit.actors.test.StorageTestState;
+import org.ini4j.Ini;
 
-import java.io.Serializable;
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Paths;
 
-public class HelloState implements StorageTestState, Serializable
+public class AWSConfigValue
 {
+    static private String configFile = null;
 
-    public String lastName;
-    public HelloDto sampleData;
-
-    @Override
-    public String lastName()
+    static public String getRegion()
     {
-        return lastName;
+        File file = getAwsConfigFile();
+        if (!file.exists()) return null;
+
+        try
+        {
+            Ini ini = new Ini(file);
+            return ini.get("default", "region");
+        }
+        catch (IOException e)
+        {
+            return null;
+        }
     }
 
+    static private File getAwsConfigFile()
+    {
+        return Paths.get(
+                System.getProperty("user.home"),
+                ".aws",
+                "config").toFile();
+    }
 }

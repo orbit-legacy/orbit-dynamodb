@@ -28,17 +28,8 @@
 
 package cloud.orbit.actors.extensions.dynamodb;
 
-import cloud.orbit.actors.extensions.ActorExtension;
-import cloud.orbit.actors.extensions.json.ActorReferenceModule;
-import cloud.orbit.actors.runtime.DefaultDescriptorFactory;
-import cloud.orbit.actors.test.StorageBaseTest;
-import cloud.orbit.actors.test.StorageTest;
-import cloud.orbit.actors.test.StorageTestState;
-import cloud.orbit.exception.UncheckedException;
+import org.junit.Test;
 
-import com.amazonaws.auth.BasicAWSCredentials;
-import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient;
-import com.amazonaws.services.dynamodbv2.document.DynamoDB;
 import com.amazonaws.services.dynamodbv2.document.Item;
 import com.amazonaws.services.dynamodbv2.document.Table;
 import com.amazonaws.services.dynamodbv2.model.AttributeDefinition;
@@ -47,17 +38,30 @@ import com.amazonaws.services.dynamodbv2.model.KeyType;
 import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughput;
 import com.amazonaws.services.dynamodbv2.model.ResourceNotFoundException;
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
-import com.fasterxml.jackson.annotation.JsonAutoDetect;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.core.JsonProcessingException;
 
+import cloud.orbit.actors.Actor;
+import cloud.orbit.actors.Stage;
+import cloud.orbit.actors.extensions.ActorExtension;
+import cloud.orbit.actors.test.StorageBaseTest;
+import cloud.orbit.actors.test.StorageTest;
+import cloud.orbit.actors.test.StorageTestState;
+import cloud.orbit.exception.UncheckedException;
+
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+
+import static junit.framework.Assert.assertEquals;
 
 public class DynamoDBPersistenceTest extends StorageBaseTest
 {
-    private ObjectMapper mapper;
+    private static final String DEFAULT_TABLE_NAME = "orbit-test";
 
-    private AmazonDynamoDBClient dynamoClient;
-    private DynamoDB dynamoDB;
+    private DynamoDBConnection dynamoDBConnection;
 
     @Override
     public Class<? extends StorageTest> getActorInterfaceClass()
@@ -69,28 +73,18 @@ public class DynamoDBPersistenceTest extends StorageBaseTest
     public ActorExtension getStorageExtension()
     {
         final DynamoDBStorageExtension extension = new DynamoDBStorageExtension();
-        extension.setCredentialType(DynamoDBStorageExtension.AmazonCredentialType.BASIC_CREDENTIALS);
+        extension.setCredentialType(AmazonCredentialType.BASIC_CREDENTIALS);
         extension.setAccessKey("dummy");
         extension.setSecretKey("dummy");
         extension.setEndpoint("http://localhost:35458/");
+        extension.setDefaultTableName(DEFAULT_TABLE_NAME);
         return extension;
     }
 
     @Override
     public void initStorage()
     {
-        mapper = new ObjectMapper();
-        mapper.registerModule(new ActorReferenceModule(DefaultDescriptorFactory.get()));
-        mapper.setVisibility(mapper.getSerializationConfig().getDefaultVisibilityChecker()
-                .withFieldVisibility(JsonAutoDetect.Visibility.ANY)
-                .withGetterVisibility(JsonAutoDetect.Visibility.NONE)
-                .withIsGetterVisibility(JsonAutoDetect.Visibility.NONE)
-                .withSetterVisibility(JsonAutoDetect.Visibility.NONE)
-                .withCreatorVisibility(JsonAutoDetect.Visibility.NONE));
-
-        dynamoClient = new AmazonDynamoDBClient(new BasicAWSCredentials("dummy", "dummy"));
-        dynamoClient.setEndpoint("http://localhost:35458/");
-        dynamoDB = new DynamoDB(dynamoClient);
+        dynamoDBConnection = new DynamoDBConnection(AmazonCredentialType.BASIC_CREDENTIALS, "dummy", "dummy", "", "", "http://localhost:35458/");
 
         closeStorage();
     }
@@ -100,39 +94,39 @@ public class DynamoDBPersistenceTest extends StorageBaseTest
     {
         try
         {
-            dynamoClient.describeTable(getActorInterfaceClass().getSimpleName());
-            dynamoClient.deleteTable(getActorInterfaceClass().getSimpleName());
+            dynamoDBConnection.getDynamoClient().describeTable(DEFAULT_TABLE_NAME);
+            dynamoDBConnection.getDynamoClient().deleteTable(DEFAULT_TABLE_NAME);
         }
         catch(ResourceNotFoundException e)
         {
 
         }
 
-        dynamoDB.createTable(getActorInterfaceClass().getSimpleName(),
+        dynamoDBConnection.getDynamoDB().createTable(DEFAULT_TABLE_NAME,
                 Collections.singletonList(
                         new KeySchemaElement("_id", KeyType.HASH)),
                 Collections.singletonList(
                        new AttributeDefinition("_id", ScalarAttributeType.S)),
-                new ProvisionedThroughput(10L, 10L));
+                new ProvisionedThroughput(1L, 1L));
     }
 
     public long count(Class<? extends StorageTest> actorInterface)
     {
-        return dynamoClient.describeTable(actorInterface.getSimpleName()).getTable().getItemCount();
+        return dynamoDBConnection.getDynamoClient().describeTable(DEFAULT_TABLE_NAME).getTable().getItemCount();
     }
 
     @Override
     public StorageTestState readState(final String identity)
     {
-        final Table table = dynamoDB.getTable(getActorInterfaceClass().getSimpleName());
-        final Item item = table.getItem("_id", identity);
+        final Table table = dynamoDBConnection.getDynamoDB().getTable(DEFAULT_TABLE_NAME);
+        final Item item = table.getItem("_id", identity + "/" + getActorInterfaceClass().getName());
 
         if (item != null)
         {
             try
             {
                 final StorageTestState testState = new HelloState();
-                mapper.readerForUpdating(testState).readValue(item.getJSON("_state"));
+                dynamoDBConnection.getMapper().readerForUpdating(testState).readValue(item.getJSON("_state"));
                 return testState;
             }
             catch (Exception e)
@@ -145,12 +139,120 @@ public class DynamoDBPersistenceTest extends StorageBaseTest
 
     public long count()
     {
-        return count(Hello.class);
+        return count(getActorInterfaceClass());
     }
 
     @Override
     public int heavyTestSize()
     {
         return 100;
+    }
+
+    @Test
+    public void testPersistingNullValues() throws Exception {
+        final HelloDto sampleData = new HelloDto();
+        sampleData.setName(null);
+        sampleData.setNameList(null);
+        sampleData.setNameProperties(null);
+        sampleData.setNameSet(null);
+        sampleData.setByteArray(null);
+
+        testSampleData(sampleData);
+    }
+
+    @Test
+    public void testPersistingNullContainedValues() throws Exception {
+        final HelloDto sampleData = new HelloDto();
+        sampleData.setName(null);
+
+        List<String> nameList = new ArrayList<>();
+        nameList.add(null);
+
+        sampleData.setNameList(nameList);
+
+        final Map<String, Object> nameProperties = new HashMap<>();
+        nameProperties.put("Jim", null);
+
+        sampleData.setNameProperties(nameProperties);
+        sampleData.setNameSet(new HashSet<>(Collections.singletonList(null)));
+
+        testSampleData(sampleData);
+    }
+
+    @Test
+    public void testPersistingEmptyContainers() throws Exception {
+        final HelloDto sampleData = new HelloDto();
+        sampleData.setName(null);
+        sampleData.setNameList(new ArrayList<>());
+        sampleData.setNameProperties(new HashMap<>());
+        sampleData.setNameSet(new HashSet<>());
+        sampleData.setByteArray(new byte[0]);
+
+        testSampleData(sampleData);
+    }
+
+    @Test
+    public void testPersistingEmptyStringValues() throws Exception {
+        final HelloDto sampleData = new HelloDto();
+        sampleData.setName("");
+
+        List<String> nameList = new ArrayList<>();
+        nameList.add("");
+
+        sampleData.setNameList(nameList);
+
+        final Map<String, Object> nameProperties = new HashMap<>();
+        nameProperties.put("Jim", "");
+
+        sampleData.setNameProperties(nameProperties);
+        sampleData.setNameSet(new HashSet<>(Collections.singletonList("")));
+
+        testSampleData(sampleData);
+    }
+
+    @Test
+    public void testPersistingNonBlankNonEmptyValues() throws Exception {
+        final HelloDto sampleData = new HelloDto();
+        sampleData.setName("Larry");
+
+        final Map<String, Object> nameProperties = new HashMap<>();
+        nameProperties.put("Curly", "one");
+        nameProperties.put("Larry", 2);
+        nameProperties.put("Moe", "three".getBytes());
+
+        sampleData.setNameProperties(nameProperties);
+
+        sampleData.setNameList(new ArrayList<>(nameProperties.keySet()));
+        sampleData.setNameSet(new HashSet<>(nameProperties.keySet()));
+
+        sampleData.setByteArray(sampleData.getName().getBytes());
+
+        testSampleData(sampleData);
+    }
+
+    private void testSampleData(HelloDto sampleData) throws JsonProcessingException
+    {
+        Stage stage = this.createStage();
+        final Hello helloActor = Actor.getReference(Hello.class, "sampleData");
+
+        helloActor.setSampleData(sampleData).join();
+        final HelloDto loadedSampleData = helloActor.getSampleData(true).join();
+
+        jsonEquals(sampleData, loadedSampleData);
+    }
+
+    protected void jsonEquals(Object expect, Object actual)
+    {
+        try
+        {
+            assertEquals(
+                    dynamoDBConnection.getMapper().writeValueAsString(expect),
+                    dynamoDBConnection.getMapper().writeValueAsString(actual));
+        }
+        catch (JsonProcessingException e)
+        {
+            e.printStackTrace();
+            throw new RuntimeException(e);
+        }
     }
 }

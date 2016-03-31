@@ -28,20 +28,65 @@
 
 package cloud.orbit.actors.extensions.dynamodb;
 
-import cloud.orbit.actors.test.StorageTestState;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
-import java.io.Serializable;
-
-public class HelloState implements StorageTestState, Serializable
+public class HelloDto
 {
+    private String name;
+    private Set<String> nameSet;
+    private List<String> nameList;
+    private Map<String, Object> nameProperties;
+    private byte[] byteArray;
 
-    public String lastName;
-    public HelloDto sampleData;
-
-    @Override
-    public String lastName()
+    public String getName()
     {
-        return lastName;
+        return name;
     }
 
+    public void setName(final String name)
+    {
+        this.name = name;
+    }
+
+    public Set<String> getNameSet()
+    {
+        return nameSet;
+    }
+
+    public void setNameSet(final Set<String> nameSet)
+    {
+        this.nameSet = nameSet;
+    }
+
+    public List<String> getNameList()
+    {
+        return nameList;
+    }
+
+    public void setNameList(final List<String> nameList)
+    {
+        this.nameList = nameList;
+    }
+
+    public Map<String, Object> getNameProperties()
+    {
+        return nameProperties;
+    }
+
+    public void setNameProperties(final Map<String, Object> nameProperties)
+    {
+        this.nameProperties = nameProperties;
+    }
+
+    public byte[] getByteArray()
+    {
+        return byteArray;
+    }
+
+    public void setByteArray(final byte[] byteArray)
+    {
+        this.byteArray = byteArray;
+    }
 }
