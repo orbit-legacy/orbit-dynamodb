@@ -72,6 +72,7 @@ public class DynamoDBPersistenceTest extends StorageBaseTest
         extension.setCredentialType(DynamoDBStorageExtension.AmazonCredentialType.BASIC_CREDENTIALS);
         extension.setAccessKey("dummy");
         extension.setSecretKey("dummy");
+        extension.setEndpoint("http://localhost:35458/");
         return extension;
     }
 
@@ -88,7 +89,7 @@ public class DynamoDBPersistenceTest extends StorageBaseTest
                 .withCreatorVisibility(JsonAutoDetect.Visibility.NONE));
 
         dynamoClient = new AmazonDynamoDBClient(new BasicAWSCredentials("dummy", "dummy"));
-        dynamoClient.setEndpoint("http://localhost:8000");
+        dynamoClient.setEndpoint("http://localhost:35458/");
         dynamoDB = new DynamoDB(dynamoClient);
 
         closeStorage();
