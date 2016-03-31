@@ -68,6 +68,11 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
             <version>1.10.65</version>
         </dependency>
         <dependency>
+            <groupId>org.ini4j</groupId>
+            <artifactId>ini4j</artifactId>
+            <version>0.5.4</version>
+        </dependency>
+        <dependency>
             <groupId>cloud.orbit</groupId>
             <artifactId>orbit-actor-tests</artifactId>
             <version>${orbit.version}</version>

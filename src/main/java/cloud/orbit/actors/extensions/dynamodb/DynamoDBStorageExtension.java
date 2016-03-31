@@ -29,58 +29,31 @@
 package cloud.orbit.actors.extensions.dynamodb;
 
 import cloud.orbit.actors.extensions.StorageExtension;
-import cloud.orbit.actors.extensions.json.ActorReferenceModule;
-import cloud.orbit.actors.runtime.DefaultDescriptorFactory;
 import cloud.orbit.actors.runtime.RemoteReference;
 import cloud.orbit.concurrent.Task;
 import cloud.orbit.exception.UncheckedException;
-import cloud.orbit.util.ExceptionUtils;
 
-import com.amazonaws.auth.BasicAWSCredentials;
-import com.amazonaws.auth.BasicSessionCredentials;
-import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
-import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient;
-import com.amazonaws.services.dynamodbv2.document.DynamoDB;
 import com.amazonaws.services.dynamodbv2.document.Item;
-import com.amazonaws.services.dynamodbv2.document.Table;
-import com.amazonaws.services.dynamodbv2.model.AttributeDefinition;
-import com.amazonaws.services.dynamodbv2.model.DescribeTableResult;
-import com.amazonaws.services.dynamodbv2.model.KeySchemaElement;
-import com.amazonaws.services.dynamodbv2.model.KeyType;
-import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughput;
-import com.amazonaws.services.dynamodbv2.model.ResourceNotFoundException;
-import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
-import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
-import java.util.Collections;
-import java.util.concurrent.ConcurrentHashMap;
 
 public class DynamoDBStorageExtension implements StorageExtension
 {
-    public enum AmazonCredentialType
-    {
-        DEFAULT_PROVIDER_CHAIN,
-        BASIC_CREDENTIALS,
-        BASIC_SESSION_CREDENTIALS
-    }
+    final static public String DOCUMENT_ID_DECORATION_SEPARATOR = "/";
 
-    private AmazonDynamoDBAsyncClient dynamoClient;
-    private DynamoDB dynamoDB;
-
-    private ConcurrentHashMap<String, Table> tableHashMap;
-
-    private ObjectMapper mapper;
     private String name = "default";
 
-    private String endpoint = "http://localhost:8000/";
+    private DynamoDBConnection dynamoDBConnection;
+
+    private String endpoint;
     private AmazonCredentialType credentialType = AmazonCredentialType.DEFAULT_PROVIDER_CHAIN;
     private String accessKey;
     private String secretKey;
     private String sessionToken;
-    private boolean shouldCreateTables = true;
+    private String region;
+    private String defaultTableName = "orbit";
 
 
     public DynamoDBStorageExtension()
@@ -89,53 +62,13 @@ public class DynamoDBStorageExtension implements StorageExtension
     }
 
     @Override
-    public Task<Void> start()
+     public Task<Void> start()
     {
-        tableHashMap = new ConcurrentHashMap<>();
-        mapper = new ObjectMapper();
-        mapper.registerModule(new ActorReferenceModule(DefaultDescriptorFactory.get()));
-        mapper.setVisibility(mapper.getSerializationConfig().getDefaultVisibilityChecker()
-                .withFieldVisibility(JsonAutoDetect.Visibility.ANY)
-                .withGetterVisibility(JsonAutoDetect.Visibility.NONE)
-                .withIsGetterVisibility(JsonAutoDetect.Visibility.NONE)
-                .withSetterVisibility(JsonAutoDetect.Visibility.NONE)
-                .withCreatorVisibility(JsonAutoDetect.Visibility.NONE));
+        dynamoDBConnection = new DynamoDBConnection(credentialType, accessKey, secretKey, sessionToken, region, endpoint);
 
-
-        switch(credentialType)
-        {
-            case BASIC_CREDENTIALS:
-                dynamoClient = new AmazonDynamoDBAsyncClient(new BasicAWSCredentials(accessKey, secretKey));
-                break;
-
-            case BASIC_SESSION_CREDENTIALS:
-                dynamoClient = new AmazonDynamoDBAsyncClient(new BasicSessionCredentials(accessKey, secretKey, sessionToken));
-                break;
-
-            case DEFAULT_PROVIDER_CHAIN:
-            default:
-                dynamoClient = new AmazonDynamoDBAsyncClient(new DefaultAWSCredentialsProviderChain());
-                break;
-        }
-
-        dynamoClient.setEndpoint(endpoint);
-
-        dynamoDB = new DynamoDB(dynamoClient);
+        DynamoDBUtils.getTable(dynamoDBConnection, defaultTableName).join();
 
         return Task.done();
-    }
-
-    @Override
-    public String getName()
-    {
-        return name;
-    }
-
-    @Override
-    public Task<Void> clearState(final RemoteReference<?> reference, final Object state)
-    {
-        return getOrCreateTable(RemoteReference.getInterfaceClass(reference).getSimpleName())
-                .thenAccept(table -> table.deleteItem("_id", String.valueOf(RemoteReference.getId(reference))));
     }
 
     @Override
@@ -145,22 +78,35 @@ public class DynamoDBStorageExtension implements StorageExtension
     }
 
     @Override
-    @SuppressWarnings("unchecked")
+    public Task<Void> clearState(final RemoteReference<?> reference, final Object state)
+    {
+        final String tableName = getTableName(RemoteReference.getInterfaceClass(reference), state.getClass());
+        final String itemId = generateDocumentId(reference);
+
+        return DynamoDBUtils.getTable(dynamoDBConnection, tableName)
+                .thenAccept(table -> table.deleteItem(DynamoDBUtils.FIELD_NAME_PRIMARY_ID, itemId));
+
+    }
+
+    @Override
     public Task<Boolean> readState(final RemoteReference<?> reference, final Object state)
     {
+        final ObjectMapper mapper = dynamoDBConnection.getMapper();
+        final String tableName = getTableName(RemoteReference.getInterfaceClass(reference), state.getClass());
+        final String itemId = generateDocumentId(reference);
 
-        return getOrCreateTable(RemoteReference.getInterfaceClass(reference).getSimpleName())
-                .thenApply(table -> table.getItem("_id", String.valueOf(RemoteReference.getId(reference))))
+        return DynamoDBUtils.getTable(dynamoDBConnection, tableName)
+                .thenApply(table -> table.getItem(DynamoDBUtils.FIELD_NAME_PRIMARY_ID, itemId))
                 .thenApply(item ->
                 {
-                    if (item != null)
+                    if(item != null)
                     {
                         try
                         {
-                            mapper.readerForUpdating(state).readValue(item.getJSON("_state"));
+                            mapper.readerForUpdating(state).readValue(item.getJSON(DynamoDBUtils.FIELD_NAME_DATA));
                             return true;
                         }
-                        catch (IOException e)
+                        catch(IOException e)
                         {
                             throw new UncheckedException(e);
                         }
@@ -173,63 +119,56 @@ public class DynamoDBStorageExtension implements StorageExtension
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public Task<Void> writeState(final RemoteReference<?> reference, final Object state)
     {
         try
         {
+            final ObjectMapper mapper = dynamoDBConnection.getMapper();
             final String serializedState = mapper.writeValueAsString(state);
 
-            return getOrCreateTable(RemoteReference.getInterfaceClass(reference).getSimpleName())
-                    .thenAccept(table -> table.putItem(new Item().withPrimaryKey("_id", String.valueOf(RemoteReference.getId(reference))).withJSON("_state", serializedState)));
+            final String tableName = getTableName(RemoteReference.getInterfaceClass(reference), state.getClass());
+            final String itemId = generateDocumentId(reference);
+
+            return DynamoDBUtils.getTable(dynamoDBConnection, tableName)
+                    .thenAccept(table ->
+                    {
+                        final Item newItem = new Item()
+                                .withPrimaryKey(DynamoDBUtils.FIELD_NAME_PRIMARY_ID, itemId)
+                                .withJSON(DynamoDBUtils.FIELD_NAME_DATA, serializedState);
+
+                        table.putItem(newItem);
+                    });
+
         }
-        catch (JsonProcessingException e)
+        catch(JsonProcessingException e)
         {
             throw new UncheckedException(e);
         }
     }
 
-    private Task<Table> getOrCreateTable(final String tableName)
+    @Override
+    public String getName()
     {
-        final Table table = tableHashMap.get(tableName);
-        if (table != null)
-        {
-            return Task.fromValue(table);
-        }
-        else
-        {
-            return Task.fromFuture(dynamoClient.describeTableAsync(tableName))
-                    .thenApply(DescribeTableResult::getTable)
-                    .thenApply(descriptor -> dynamoDB.getTable(descriptor.getTableName()))
-                    .exceptionally(e ->
-                    {
-                        if (shouldCreateTables && ExceptionUtils.isCauseInChain(ResourceNotFoundException.class, e))
-                        {
-                            final Table newTable = dynamoDB.createTable(tableName,
-                                    Collections.singletonList(
-                                            new KeySchemaElement("_id", KeyType.HASH)),
-                                    Collections.singletonList(
-                                            new AttributeDefinition("_id", ScalarAttributeType.S)),
-                                    new ProvisionedThroughput(10L, 10L));
+        return name;
+    }
 
-                            try
-                            {
-                                newTable.waitForActive();
-                            }
-                            catch(Exception ex)
-                            {
-                                throw new UncheckedException(ex);
-                            }
+    public String generateDocumentId(final RemoteReference<?> reference)
+    {
+        Class<?> referenceClass = RemoteReference.getInterfaceClass(reference);
+        String idDecoration = referenceClass.getName();
 
-                            tableHashMap.putIfAbsent(tableName, newTable);
-                            return newTable;
-                        }
-                        else
-                        {
-                            throw new UncheckedException(e);
-                        }
-                    });
-        }
+        String documentId = String.format(
+                "%s%s%s",
+                String.valueOf(RemoteReference.getId(reference)),
+                DOCUMENT_ID_DECORATION_SEPARATOR,
+                idDecoration);
+
+        return documentId;
+    }
+
+    public String getTableName(final Class<?> referenceType, final Class<?> stateType)
+    {
+        return defaultTableName;
     }
 
     public void setName(final String name)
@@ -287,14 +226,23 @@ public class DynamoDBStorageExtension implements StorageExtension
         this.sessionToken = sessionToken;
     }
 
-    public boolean getShouldCreateTables()
+    public String getRegion()
     {
-        return shouldCreateTables;
+        return region;
     }
 
-    public void setShouldCreateTables(boolean shouldCreateTables)
+    public void setRegion(String region)
     {
-        this.shouldCreateTables = shouldCreateTables;
+        this.region = region;
     }
 
+    public String getDefaultTableName()
+    {
+        return defaultTableName;
+    }
+
+    public void setDefaultTableName(String defaultTableName)
+    {
+        this.defaultTableName = defaultTableName;
+    }
 }

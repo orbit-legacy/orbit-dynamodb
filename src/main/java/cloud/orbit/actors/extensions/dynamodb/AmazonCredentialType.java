@@ -28,20 +28,9 @@
 
 package cloud.orbit.actors.extensions.dynamodb;
 
-import cloud.orbit.actors.test.StorageTestState;
-
-import java.io.Serializable;
-
-public class HelloState implements StorageTestState, Serializable
+public enum AmazonCredentialType
 {
-
-    public String lastName;
-    public HelloDto sampleData;
-
-    @Override
-    public String lastName()
-    {
-        return lastName;
-    }
-
+    DEFAULT_PROVIDER_CHAIN,
+    BASIC_CREDENTIALS,
+    BASIC_SESSION_CREDENTIALS
 }

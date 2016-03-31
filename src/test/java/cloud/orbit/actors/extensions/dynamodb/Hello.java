@@ -30,7 +30,10 @@ package cloud.orbit.actors.extensions.dynamodb;
 
 import cloud.orbit.actors.Actor;
 import cloud.orbit.actors.test.StorageTest;
+import cloud.orbit.concurrent.Task;
 
 public interface Hello extends Actor, StorageTest
 {
+    Task<Void> setSampleData(HelloDto sampleData);
+    Task<HelloDto> getSampleData(boolean reloadState);
 }
