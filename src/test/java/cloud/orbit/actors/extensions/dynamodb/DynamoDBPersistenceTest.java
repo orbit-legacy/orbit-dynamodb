@@ -1,5 +1,5 @@
 /*
- Copyright (C) 2015 Electronic Arts Inc.  All rights reserved.
+ Copyright (C) 2016 Electronic Arts Inc.  All rights reserved.
 
  Redistribution and use in source and binary forms, with or without
  modification, are permitted provided that the following conditions
@@ -26,15 +26,15 @@
  THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-package com.ea.orbit.actors.extensions.dynamodb;
+package cloud.orbit.actors.extensions.dynamodb;
 
-import com.ea.orbit.actors.extensions.ActorExtension;
-import com.ea.orbit.actors.extensions.json.ActorReferenceModule;
-import com.ea.orbit.actors.runtime.DefaultDescriptorFactory;
-import com.ea.orbit.actors.test.StorageBaseTest;
-import com.ea.orbit.actors.test.StorageTest;
-import com.ea.orbit.actors.test.StorageTestState;
-import com.ea.orbit.exception.UncheckedException;
+import cloud.orbit.actors.extensions.ActorExtension;
+import cloud.orbit.actors.extensions.json.ActorReferenceModule;
+import cloud.orbit.actors.runtime.DefaultDescriptorFactory;
+import cloud.orbit.actors.test.StorageBaseTest;
+import cloud.orbit.actors.test.StorageTest;
+import cloud.orbit.actors.test.StorageTestState;
+import cloud.orbit.exception.UncheckedException;
 
 import com.amazonaws.auth.BasicAWSCredentials;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient;

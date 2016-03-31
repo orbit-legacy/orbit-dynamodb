@@ -1,5 +1,5 @@
 /*
- Copyright (C) 2015 Electronic Arts Inc.  All rights reserved.
+ Copyright (C) 2016 Electronic Arts Inc.  All rights reserved.
 
  Redistribution and use in source and binary forms, with or without
  modification, are permitted provided that the following conditions
@@ -26,11 +26,21 @@
  THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-package com.ea.orbit.actors.extensions.dynamodb;
+package cloud.orbit.actors.extensions.dynamodb;
 
-import com.ea.orbit.actors.Actor;
-import com.ea.orbit.actors.test.StorageTest;
+import cloud.orbit.actors.test.StorageTestState;
 
-public interface Hello extends Actor, StorageTest
+import java.io.Serializable;
+
+public class HelloState implements StorageTestState, Serializable
 {
+
+    public String lastName;
+
+    @Override
+    public String lastName()
+    {
+        return lastName;
+    }
+
 }

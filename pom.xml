@@ -27,54 +27,38 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
-    <groupId>com.ea.orbit</groupId>
+	
+	<parent>
+		<groupId>cloud.orbit</groupId>
+		<artifactId>orbit-java-parent</artifactId>
+		<version>1</version>
+	</parent>
+	
+    <groupId>cloud.orbit</groupId>
     <artifactId>orbit-dynamodb</artifactId>
     <version>0.1.0-SNAPSHOT</version>
     <name>Orbit DynamoDB Extension</name>
     <description>DynamoDB storage extension for Orbit.</description>
-    <url>https://github.com/electronicarts/orbit-dynamodb/</url>
+    <url>https://github.com/orbit/orbit-dynamodb/</url>
 
     <properties>
-        <orbit.version>0.8.0-preview1</orbit.version>
-        <project.target.jdk>1.8</project.target.jdk>
-        <project.source.jdk>1.8</project.source.jdk>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+        <orbit.version>0.8.0</orbit.version>
     </properties>
 
-    <licenses>
-        <license>
-            <name>The BSD 3-Clause License</name>
-            <url>http://opensource.org/licenses/BSD-3-Clause</url>
-        </license>
-    </licenses>
-
-    <developers>
-        <developer>
-            <name>Electronic Arts Inc</name>
-            <url>http://www.ea.com</url>
-        </developer>
-    </developers>
-	
-    <organization>
-        <name>Electronic Arts Inc</name>
-        <url>http://www.ea.com</url>
-    </organization>
-
     <scm>
-        <url>https://github.com/electronicarts/orbit-dynamodb</url>
-        <connection>scm:git:git://github.com/electronicarts/orbit-dynamodb.git</connection>
-        <developerConnection>scm:git:ssh://git@github.com/electronicarts/orbit-dynamodb.git</developerConnection>
+        <url>https://github.com/orbit/orbit-dynamodb</url>
+        <connection>scm:git:git://github.com/orbit/orbit-dynamodb.git</connection>
+        <developerConnection>scm:git:ssh://git@github.com/orbit/orbit-dynamodb.git</developerConnection>
     </scm>
 
     <dependencies>
         <dependency>
-            <groupId>com.ea.orbit</groupId>
+            <groupId>cloud.orbit</groupId>
             <artifactId>orbit-core</artifactId>
             <version>${orbit.version}</version>
         </dependency>
         <dependency>
-            <groupId>com.ea.orbit</groupId>
+            <groupId>cloud.orbit</groupId>
             <artifactId>orbit-json</artifactId>
             <version>${orbit.version}</version>
         </dependency>
@@ -84,157 +68,10 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
             <version>1.10.37</version>
         </dependency>
         <dependency>
-            <groupId>com.ea.orbit</groupId>
+            <groupId>cloud.orbit</groupId>
             <artifactId>orbit-actor-tests</artifactId>
             <version>${orbit.version}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
-
-    <build>
-        <pluginManagement>
-            <plugins>
-                <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-compiler-plugin</artifactId>
-                    <version>3.3</version>
-                </plugin>
-
-                <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-jar-plugin</artifactId>
-                    <version>2.6</version>
-                </plugin>
-                <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-gpg-plugin</artifactId>
-                    <version>1.6</version>
-                </plugin>
-				<plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-surefire-plugin</artifactId>
-                    <version>2.18.1</version>
-                </plugin>
-                <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-source-plugin</artifactId>
-                    <version>2.4</version>
-                </plugin>
-                <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-javadoc-plugin</artifactId>
-                    <version>2.10.3</version>
-                </plugin>
-            </plugins>
-        </pluginManagement>
-
-        <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <configuration>
-                    <target>${project.target.jdk}</target>
-                    <source>${project.source.jdk}</source>
-                </configuration>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-source-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>attach-sources</id>
-                        <goals>
-                            <goal>jar</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-        </plugins>
-    </build>
-
-    <profiles>
-        <profile>
-            <id>public-deploy</id>
-            <activation>
-                <property>
-                    <name>!internalDeploy</name>
-                </property>
-            </activation>
-            <distributionManagement>
-                <snapshotRepository>
-                    <id>ossrh</id>
-                    <url>https://oss.sonatype.org/content/repositories/snapshots</url>
-                </snapshotRepository>
-                <repository>
-                    <id>ossrh</id>
-                    <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
-                </repository>
-            </distributionManagement>
-        </profile>
-        <profile>
-            <id>internal-deploy</id>
-            <activation>
-                <property>
-                    <name>internalDeploy</name>
-                    <value>true</value>
-                </property>
-            </activation>
-            <distributionManagement>
-                <snapshotRepository>
-                    <id>${internalSnapshotRepo.id}</id>
-                    <url>${internalSnapshotRepo.url}</url>
-                </snapshotRepository>
-                <repository>
-                    <id>${internalReleaseRepo.id}</id>
-                    <url>${internalReleaseRepo.url}</url>
-                </repository>
-            </distributionManagement>
-        </profile>
-        <profile>
-            <id>stageRelease</id>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-javadoc-plugin</artifactId>
-                        <configuration>
-                            <failOnError>false</failOnError>
-                            <additionalparam>-Xdoclint:none</additionalparam>
-                        </configuration>
-                        <executions>
-                            <execution>
-                                <configuration>
-                                    <failOnError>false</failOnError>
-                                    <additionalparam>-Xdoclint:none</additionalparam>
-                                </configuration>
-                                <id>attach-javadocs</id>
-                                <goals>
-                                    <goal>jar</goal>
-                                </goals>
-                            </execution>
-                            <execution>
-                                <id>attach-javadocs-2</id>
-                                <goals>
-                                    <goal>aggregate</goal>
-                                </goals>
-                            </execution>
-                        </executions>
-                    </plugin>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-gpg-plugin</artifactId>
-                        <executions>
-                            <execution>
-                                <id>sign-artifacts</id>
-                                <phase>verify</phase>
-                                <goals>
-                                    <goal>sign</goal>
-                                </goals>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-    </profiles>
 </project>
