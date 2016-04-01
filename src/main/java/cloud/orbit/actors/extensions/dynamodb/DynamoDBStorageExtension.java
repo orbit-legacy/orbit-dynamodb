@@ -53,7 +53,7 @@ public class DynamoDBStorageExtension implements StorageExtension
 
     public DynamoDBStorageExtension()
     {
-
+        dynamoDBConfiguration = new DynamoDBConfiguration();
     }
 
     public DynamoDBStorageExtension(DynamoDBConfiguration dynamoDBConfiguration)

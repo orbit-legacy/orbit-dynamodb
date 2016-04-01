@@ -31,13 +31,18 @@ package cloud.orbit.actors.extensions.dynamodb;
 import org.junit.Test;
 
 import com.amazonaws.services.dynamodbv2.document.Item;
+import com.amazonaws.services.dynamodbv2.document.ItemCollection;
+import com.amazonaws.services.dynamodbv2.document.ScanOutcome;
 import com.amazonaws.services.dynamodbv2.document.Table;
+import com.amazonaws.services.dynamodbv2.document.spec.ScanSpec;
 import com.amazonaws.services.dynamodbv2.model.AttributeDefinition;
+import com.amazonaws.services.dynamodbv2.model.DescribeTableResult;
 import com.amazonaws.services.dynamodbv2.model.KeySchemaElement;
 import com.amazonaws.services.dynamodbv2.model.KeyType;
 import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughput;
 import com.amazonaws.services.dynamodbv2.model.ResourceNotFoundException;
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
+import com.amazonaws.services.dynamodbv2.model.TableStatus;
 import com.fasterxml.jackson.core.JsonProcessingException;
 
 import cloud.orbit.actors.Actor;
@@ -52,6 +57,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -63,6 +69,7 @@ public class DynamoDBPersistenceTest extends StorageBaseTest
 
     private DynamoDBConnection dynamoDBConnection;
     private DynamoDBConfiguration dynamoDBConfiguration;
+    private DynamoDBStorageExtension dynamoExtension;
 
 
     public DynamoDBPersistenceTest()
@@ -73,6 +80,8 @@ public class DynamoDBPersistenceTest extends StorageBaseTest
                 .withSecretKey("dummy")
                 .withEndpoint("http://localhost:35458/")
                 .build();
+
+        getStorageExtension();
     }
 
     @Override
@@ -84,9 +93,13 @@ public class DynamoDBPersistenceTest extends StorageBaseTest
     @Override
     public ActorExtension getStorageExtension()
     {
-        final DynamoDBStorageExtension extension = new DynamoDBStorageExtension(dynamoDBConfiguration);
-        extension.setDefaultTableName(DEFAULT_TABLE_NAME);
-        return extension;
+        if(dynamoExtension == null)
+        {
+            dynamoExtension = new DynamoDBStorageExtension(dynamoDBConfiguration);
+            dynamoExtension.setDefaultTableName(DEFAULT_TABLE_NAME);
+        }
+
+        return dynamoExtension;
     }
 
     @Override
@@ -120,7 +133,36 @@ public class DynamoDBPersistenceTest extends StorageBaseTest
 
     public long count(Class<? extends StorageTest> actorInterface)
     {
-        return dynamoDBConnection.getDynamoClient().describeTable(DEFAULT_TABLE_NAME).getTable().getItemCount();
+        final String tableName = dynamoExtension.getTableName(actorInterface, HelloState.class);
+        try
+        {
+            final Table table = dynamoDBConnection.getDynamoDB().getTable(tableName);
+
+            // if we get here, the table exists, it may not be ready yet.
+            ensureTableIsActive(tableName);
+            ScanSpec scanSpec = new ScanSpec()
+                    .withAttributesToGet(DynamoDBUtils.FIELD_NAME_PRIMARY_ID)
+                    .withConsistentRead(true);
+
+            final ItemCollection<ScanOutcome> queryResults = table.scan(scanSpec);
+
+            int count = 0;
+            Iterator<Item> iterator = queryResults.iterator();
+
+            while (iterator.hasNext())
+            {
+                iterator.next();
+                count++;
+            }
+
+            return count;
+        }
+        catch (ResourceNotFoundException e)
+        {
+            // Assumption: nonexistent table is deliberate (count could be called before a get/put which
+            // creates the table), meaning it has no entries
+            return 0;
+        }
     }
 
     @Override
@@ -261,6 +303,28 @@ public class DynamoDBPersistenceTest extends StorageBaseTest
         {
             e.printStackTrace();
             throw new RuntimeException(e);
+        }
+    }
+
+    private void ensureTableIsActive(final String tableName)
+    {
+        try
+        {
+            while (true)
+            {
+                final DescribeTableResult describe = dynamoDBConnection.getDynamoClient().describeTable(tableName);
+                if (describe.getTable().getTableStatus().equals(TableStatus.ACTIVE.name()))
+                {
+                    return;
+                }
+
+                Thread.sleep(500);
+            }
+
+        }
+        catch (InterruptedException e)
+        {
+            throw new UncheckedException(e);
         }
     }
 }
