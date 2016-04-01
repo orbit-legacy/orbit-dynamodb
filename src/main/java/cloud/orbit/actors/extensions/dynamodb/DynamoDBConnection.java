@@ -71,10 +71,10 @@ public class DynamoDBConnection
 
     private UUID connectionId;
 
-    public DynamoDBConnection(final AmazonCredentialType credentialType, final String accessKey, final String secretKey, final String sessionToken, final String region, final String endpoint)
+    public DynamoDBConnection(DynamoDBConfiguration dynamoDBConfiguration)
     {
         connectionId = UUID.randomUUID();
-        initializeDynamoDB(credentialType, accessKey, secretKey, sessionToken, region, endpoint);
+        initializeDynamoDB(dynamoDBConfiguration);
         initializeMapper();
     }
 
@@ -183,16 +183,16 @@ public class DynamoDBConnection
         return module;
     }
 
-    private void initializeDynamoDB(final AmazonCredentialType credentialType, final String accessKey, final String secretKey, final String sessionToken, final String region, final String endpoint)
+    private void initializeDynamoDB(final DynamoDBConfiguration dynamoDBConfiguration)
     {
-        switch (credentialType)
+        switch (dynamoDBConfiguration.getCredentialType())
         {
             case BASIC_CREDENTIALS:
-                dynamoClient = new AmazonDynamoDBAsyncClient(new BasicAWSCredentials(accessKey, secretKey));
+                dynamoClient = new AmazonDynamoDBAsyncClient(new BasicAWSCredentials(dynamoDBConfiguration.getAccessKey(), dynamoDBConfiguration.getSecretKey()));
                 break;
 
             case BASIC_SESSION_CREDENTIALS:
-                dynamoClient = new AmazonDynamoDBAsyncClient(new BasicSessionCredentials(accessKey, secretKey, sessionToken));
+                dynamoClient = new AmazonDynamoDBAsyncClient(new BasicSessionCredentials(dynamoDBConfiguration.getAccessKey(), dynamoDBConfiguration.getSecretKey(), dynamoDBConfiguration.getSessionToken()));
                 break;
 
             case DEFAULT_PROVIDER_CHAIN:
@@ -201,15 +201,15 @@ public class DynamoDBConnection
                 break;
         }
 
-        String awsRegion = StringUtils.defaultIfBlank(region, AWSConfigValue.getRegion());
+        String awsRegion = StringUtils.defaultIfBlank(dynamoDBConfiguration.getRegion(), AWSConfigValue.getRegion());
         if (StringUtils.isNotBlank(awsRegion))
         {
             dynamoClient.setRegion(Region.getRegion(Regions.fromName(awsRegion)));
         }
 
-        if (StringUtils.isNotBlank(endpoint))
+        if (StringUtils.isNotBlank(dynamoDBConfiguration.getEndpoint()))
         {
-            dynamoClient.setEndpoint(endpoint);
+            dynamoClient.setEndpoint(dynamoDBConfiguration.getEndpoint());
         }
 
         dynamoDB = new DynamoDB(dynamoClient);

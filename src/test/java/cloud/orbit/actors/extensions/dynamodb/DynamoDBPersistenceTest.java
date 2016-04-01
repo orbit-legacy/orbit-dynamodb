@@ -62,6 +62,18 @@ public class DynamoDBPersistenceTest extends StorageBaseTest
     private static final String DEFAULT_TABLE_NAME = "orbit-test";
 
     private DynamoDBConnection dynamoDBConnection;
+    private DynamoDBConfiguration dynamoDBConfiguration;
+
+
+    public DynamoDBPersistenceTest()
+    {
+        dynamoDBConfiguration = new DynamoDBConfiguration.Builder()
+                .withCredentialType(AmazonCredentialType.BASIC_CREDENTIALS)
+                .withAccessKey("dummy")
+                .withSecretKey("dummy")
+                .withEndpoint("http://localhost:35458/")
+                .build();
+    }
 
     @Override
     public Class<? extends StorageTest> getActorInterfaceClass()
@@ -72,11 +84,7 @@ public class DynamoDBPersistenceTest extends StorageBaseTest
     @Override
     public ActorExtension getStorageExtension()
     {
-        final DynamoDBStorageExtension extension = new DynamoDBStorageExtension();
-        extension.setCredentialType(AmazonCredentialType.BASIC_CREDENTIALS);
-        extension.setAccessKey("dummy");
-        extension.setSecretKey("dummy");
-        extension.setEndpoint("http://localhost:35458/");
+        final DynamoDBStorageExtension extension = new DynamoDBStorageExtension(dynamoDBConfiguration);
         extension.setDefaultTableName(DEFAULT_TABLE_NAME);
         return extension;
     }
@@ -84,7 +92,7 @@ public class DynamoDBPersistenceTest extends StorageBaseTest
     @Override
     public void initStorage()
     {
-        dynamoDBConnection = new DynamoDBConnection(AmazonCredentialType.BASIC_CREDENTIALS, "dummy", "dummy", "", "", "http://localhost:35458/");
+        dynamoDBConnection = new DynamoDBConnection(dynamoDBConfiguration);
 
         closeStorage();
     }
