@@ -40,12 +40,12 @@ public class AWSConfigValue
 
     static public String getRegion()
     {
-        File file = getAwsConfigFile();
+        final File file = getAwsConfigFile();
         if (!file.exists()) return null;
 
         try
         {
-            Ini ini = new Ini(file);
+            final Ini ini = new Ini(file);
             return ini.get("default", "region");
         }
         catch (IOException e)

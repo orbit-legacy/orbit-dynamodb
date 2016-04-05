@@ -39,37 +39,37 @@ public class DynamoDBConfiguration
             dynamoConfig = new DynamoDBConfiguration();
         }
 
-        public Builder withCredentialType(AmazonCredentialType credentialType)
+        public Builder withCredentialType(final AmazonCredentialType credentialType)
         {
             dynamoConfig.setCredentialType(credentialType);
             return this;
         }
 
-        public Builder withAccessKey(String accessKey)
+        public Builder withAccessKey(final String accessKey)
         {
             dynamoConfig.setAccessKey(accessKey);
             return this;
         }
 
-        public Builder withSecretKey(String secretKey)
+        public Builder withSecretKey(final String secretKey)
         {
             dynamoConfig.setSecretKey(secretKey);
             return this;
         }
 
-        public Builder withSessionToken(String sessionToken)
+        public Builder withSessionToken(final String sessionToken)
         {
             dynamoConfig.setSessionToken(sessionToken);
             return this;
         }
 
-        public Builder withRegion(String region)
+        public Builder withRegion(final String region)
         {
             dynamoConfig.setRegion(region);
             return this;
         }
 
-        public Builder withEndpoint(String endpoint)
+        public Builder withEndpoint(final String endpoint)
         {
             dynamoConfig.setEndpoint(endpoint);
             return this;

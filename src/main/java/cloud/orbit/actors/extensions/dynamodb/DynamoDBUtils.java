@@ -144,7 +144,7 @@ public class DynamoDBUtils
 
     private static Table createTable(final DynamoDBConnection dynamoDBConnection, final String tableName) throws InterruptedException
     {
-        CreateTableRequest createTableRequest = createCreateTableRequest(tableName);
+        final CreateTableRequest createTableRequest = createCreateTableRequest(tableName);
 
         final Table table = dynamoDBConnection.getDynamoDB().createTable(createTableRequest);
 
@@ -154,8 +154,8 @@ public class DynamoDBUtils
 
     private static CreateTableRequest createCreateTableRequest(final String tableName)
     {
-        List<KeySchemaElement> keySchema = new ArrayList<>();
-        List<AttributeDefinition> tableAttributes = new ArrayList<>();
+        final List<KeySchemaElement> keySchema = new ArrayList<>();
+        final List<AttributeDefinition> tableAttributes = new ArrayList<>();
 
         keySchema.add(new KeySchemaElement(FIELD_NAME_PRIMARY_ID, KeyType.HASH));
         tableAttributes.add(new AttributeDefinition(FIELD_NAME_PRIMARY_ID, ScalarAttributeType.S));

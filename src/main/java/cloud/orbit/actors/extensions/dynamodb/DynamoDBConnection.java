@@ -71,7 +71,7 @@ public class DynamoDBConnection
 
     private UUID connectionId;
 
-    public DynamoDBConnection(DynamoDBConfiguration dynamoDBConfiguration)
+    public DynamoDBConnection(final DynamoDBConfiguration dynamoDBConfiguration)
     {
         connectionId = UUID.randomUUID();
         initializeDynamoDB(dynamoDBConfiguration);
@@ -95,7 +95,7 @@ public class DynamoDBConnection
 
     private void initializeMapper()
     {
-        SimpleModule serializersModule = createSerializersForMapper();
+        final SimpleModule serializersModule = createSerializersForMapper();
 
         mapper = new ObjectMapper();
 
@@ -143,7 +143,7 @@ public class DynamoDBConnection
             @Override
             public String deserialize(final JsonParser jsonParser, final DeserializationContext deserializationContext) throws IOException, JsonProcessingException
             {
-                String value = jsonParser.getValueAsString();
+                final String value = jsonParser.getValueAsString();
                 return (value.equals(EMPTY_STRING_PLACEHOLDER) ? "" : value);
             }
         });
@@ -169,7 +169,7 @@ public class DynamoDBConnection
             @Override
             public byte[] deserialize(final JsonParser jsonParser, final DeserializationContext deserializationContext) throws IOException, JsonProcessingException
             {
-                byte[] value = jsonParser.getBinaryValue();
+                final byte[] value = jsonParser.getBinaryValue();
 
                 if (Arrays.equals(value, EMPTY_BYTE_ARRAY_PLACEHOLDER))
                 {

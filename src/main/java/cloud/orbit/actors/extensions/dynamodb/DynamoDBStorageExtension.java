@@ -56,7 +56,7 @@ public class DynamoDBStorageExtension implements StorageExtension
         dynamoDBConfiguration = new DynamoDBConfiguration();
     }
 
-    public DynamoDBStorageExtension(DynamoDBConfiguration dynamoDBConfiguration)
+    public DynamoDBStorageExtension(final DynamoDBConfiguration dynamoDBConfiguration)
     {
         this.dynamoDBConfiguration = dynamoDBConfiguration;
     }
@@ -181,7 +181,7 @@ public class DynamoDBStorageExtension implements StorageExtension
         return defaultTableName;
     }
 
-    public void setDefaultTableName(String defaultTableName)
+    public void setDefaultTableName(final String defaultTableName)
     {
         this.defaultTableName = defaultTableName;
     }
