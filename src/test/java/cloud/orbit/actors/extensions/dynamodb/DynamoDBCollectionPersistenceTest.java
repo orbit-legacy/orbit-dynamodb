@@ -28,26 +28,19 @@
 
 package cloud.orbit.actors.extensions.dynamodb;
 
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Inherited;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+import cloud.orbit.actors.test.StorageTest;
 
-@Inherited
-@Target({ ElementType.TYPE })
-@Retention(RetentionPolicy.RUNTIME)
-public @interface DynamoDBStateConfiguration
+public class DynamoDBCollectionPersistenceTest extends DynamoDBPersistenceTest
 {
-    /**
-     * The name of the document store (collection, table, ...)
-     */
-    String collection() default "";
+    @Override
+    public Class<? extends StorageTest> getActorInterfaceClass()
+    {
+        return HelloWithCollection.class;
+    }
 
-    /**
-     * A distinct value that is appended to document ids to form a new id prior to saving to a backend.
-     * Helps to prevent collisions when saving different types to a common table.
-     * Helps to persist data across Actor Interface renames.
-     */
-    String idDecorationOverride() default "";
+    @Override
+    protected String getTableName()
+    {
+        return HelloStateWithCollection.class.getAnnotation(DynamoDBStateConfiguration.class).collection();
+    }
 }

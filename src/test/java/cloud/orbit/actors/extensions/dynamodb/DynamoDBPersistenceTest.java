@@ -115,15 +115,15 @@ public class DynamoDBPersistenceTest extends StorageBaseTest
     {
         try
         {
-            dynamoDBConnection.getDynamoClient().describeTable(DEFAULT_TABLE_NAME);
-            dynamoDBConnection.getDynamoClient().deleteTable(DEFAULT_TABLE_NAME);
+            dynamoDBConnection.getDynamoClient().describeTable(getTableName());
+            dynamoDBConnection.getDynamoClient().deleteTable(getTableName());
         }
         catch(ResourceNotFoundException e)
         {
 
         }
 
-        dynamoDBConnection.getDynamoDB().createTable(DEFAULT_TABLE_NAME,
+        dynamoDBConnection.getDynamoDB().createTable(getTableName(),
                 Collections.singletonList(
                         new KeySchemaElement("_id", KeyType.HASH)),
                 Collections.singletonList(
@@ -133,7 +133,7 @@ public class DynamoDBPersistenceTest extends StorageBaseTest
 
     public long count(Class<? extends StorageTest> actorInterface)
     {
-        final String tableName = dynamoExtension.getTableName(actorInterface, HelloState.class);
+        final String tableName = getTableName();
         try
         {
             final Table table = dynamoDBConnection.getDynamoDB().getTable(tableName);
@@ -168,7 +168,7 @@ public class DynamoDBPersistenceTest extends StorageBaseTest
     @Override
     public StorageTestState readState(final String identity)
     {
-        final Table table = dynamoDBConnection.getDynamoDB().getTable(DEFAULT_TABLE_NAME);
+        final Table table = dynamoDBConnection.getDynamoDB().getTable(getTableName());
         final Item item = table.getItem("_id", generateItemId(identity));
 
         if (item != null)
@@ -185,6 +185,11 @@ public class DynamoDBPersistenceTest extends StorageBaseTest
             }
         }
         return null;
+    }
+
+    protected String getTableName()
+    {
+        return DEFAULT_TABLE_NAME;
     }
 
     protected String generateItemId(final String identity)

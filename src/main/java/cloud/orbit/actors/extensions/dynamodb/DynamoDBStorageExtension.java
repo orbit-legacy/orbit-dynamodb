@@ -183,6 +183,12 @@ public class DynamoDBStorageExtension implements StorageExtension
 
     public String getTableName(final Class<?> referenceType, final Class<?> stateType)
     {
+        DynamoDBStateConfiguration dynamoDBStateConfiguration = stateType.getAnnotation(DynamoDBStateConfiguration.class);
+        if (dynamoDBStateConfiguration != null && !StringUtils.isNullOrEmpty(dynamoDBStateConfiguration.collection()))
+        {
+            return dynamoDBStateConfiguration.collection();
+        }
+
         return defaultTableName;
     }
 
