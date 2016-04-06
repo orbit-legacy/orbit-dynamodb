@@ -28,7 +28,7 @@
 
 package cloud.orbit.actors.extensions.dynamodb;
 
-public class HelloActor extends HelloBaseActor<HelloState> implements Hello
+@DynamoDBStateConfiguration(collection = "helloCollection")
+public class HelloStateWithCollection extends HelloState
 {
 }
-

@@ -28,7 +28,19 @@
 
 package cloud.orbit.actors.extensions.dynamodb;
 
-public class HelloActor extends HelloBaseActor<HelloState> implements Hello
-{
-}
+import cloud.orbit.actors.test.StorageTest;
 
+public class DynamoDBIdOverridePersistenceTest extends DynamoDBPersistenceTest
+{
+    @Override
+    public Class<? extends StorageTest> getActorInterfaceClass()
+    {
+        return HelloWithIdOverride.class;
+    }
+
+    @Override
+    protected String generateItemId(final String identity)
+    {
+        return identity + "/" + HelloStateWithIdOverride.class.getAnnotation(DynamoDBStateConfiguration.class).idDecorationOverride();
+    }
+}

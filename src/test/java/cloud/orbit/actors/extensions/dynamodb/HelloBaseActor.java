@@ -28,7 +28,42 @@
 
 package cloud.orbit.actors.extensions.dynamodb;
 
-public class HelloActor extends HelloBaseActor<HelloState> implements Hello
-{
-}
+import cloud.orbit.actors.runtime.AbstractActor;
+import cloud.orbit.concurrent.Task;
+import cloud.orbit.exception.UncheckedException;
 
+public class HelloBaseActor<S extends HelloState> extends AbstractActor<S>
+{
+    public Task<String> sayHello(String name)
+    {
+        state().lastName = name;
+        writeState().join();
+        return Task.fromValue("Hello " + name);
+    }
+
+    public Task<Void> clear()
+    {
+        clearState().join();
+        return Task.done();
+    }
+
+    public Task<Void> setSampleData(final HelloDto sampleData)
+    {
+        state().sampleData = sampleData;
+        writeState().join();
+        return Task.done();
+    }
+
+    public Task<HelloDto> getSampleData(final boolean reloadState)
+    {
+        if (reloadState)
+        {
+            if (!readState().join())
+            {
+                throw new UncheckedException("Error loading state from storage");
+            }
+        }
+
+        return Task.fromValue(state().sampleData);
+    }
+}

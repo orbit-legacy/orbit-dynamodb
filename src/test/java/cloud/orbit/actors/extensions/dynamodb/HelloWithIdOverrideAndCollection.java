@@ -28,7 +28,6 @@
 
 package cloud.orbit.actors.extensions.dynamodb;
 
-public class HelloActor extends HelloBaseActor<HelloState> implements Hello
+public interface HelloWithIdOverrideAndCollection extends Hello
 {
 }
-
