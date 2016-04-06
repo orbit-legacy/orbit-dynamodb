@@ -169,7 +169,7 @@ public class DynamoDBPersistenceTest extends StorageBaseTest
     public StorageTestState readState(final String identity)
     {
         final Table table = dynamoDBConnection.getDynamoDB().getTable(DEFAULT_TABLE_NAME);
-        final Item item = table.getItem("_id", identity + "/" + getActorInterfaceClass().getName());
+        final Item item = table.getItem("_id", generateItemId(identity));
 
         if (item != null)
         {
@@ -185,6 +185,11 @@ public class DynamoDBPersistenceTest extends StorageBaseTest
             }
         }
         return null;
+    }
+
+    protected String generateItemId(final String identity)
+    {
+        return identity + "/" + getActorInterfaceClass().getName();
     }
 
     public long count()
@@ -283,7 +288,7 @@ public class DynamoDBPersistenceTest extends StorageBaseTest
     private void testSampleData(HelloDto sampleData) throws JsonProcessingException
     {
         Stage stage = this.createStage();
-        final Hello helloActor = Actor.getReference(Hello.class, "sampleData");
+        final Hello helloActor = Actor.getReference((Class<? extends Hello>)getActorInterfaceClass(), "sampleData");
 
         helloActor.setSampleData(sampleData).join();
         final HelloDto loadedSampleData = helloActor.getSampleData(true).join();

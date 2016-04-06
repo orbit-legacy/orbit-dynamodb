@@ -34,6 +34,7 @@ import cloud.orbit.concurrent.Task;
 import cloud.orbit.exception.UncheckedException;
 
 import com.amazonaws.services.dynamodbv2.document.Item;
+import com.amazonaws.util.StringUtils;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -81,7 +82,7 @@ public class DynamoDBStorageExtension implements StorageExtension
     public Task<Void> clearState(final RemoteReference<?> reference, final Object state)
     {
         final String tableName = getTableName(RemoteReference.getInterfaceClass(reference), state.getClass());
-        final String itemId = generateDocumentId(reference);
+        final String itemId = generateDocumentId(reference, state);
 
         return DynamoDBUtils.getTable(dynamoDBConnection, tableName)
                 .thenAccept(table -> table.deleteItem(DynamoDBUtils.FIELD_NAME_PRIMARY_ID, itemId));
@@ -93,7 +94,7 @@ public class DynamoDBStorageExtension implements StorageExtension
     {
         final ObjectMapper mapper = dynamoDBConnection.getMapper();
         final String tableName = getTableName(RemoteReference.getInterfaceClass(reference), state.getClass());
-        final String itemId = generateDocumentId(reference);
+        final String itemId = generateDocumentId(reference, state);
 
         return DynamoDBUtils.getTable(dynamoDBConnection, tableName)
                 .thenApply(table -> table.getItem(DynamoDBUtils.FIELD_NAME_PRIMARY_ID, itemId))
@@ -127,7 +128,7 @@ public class DynamoDBStorageExtension implements StorageExtension
             final String serializedState = mapper.writeValueAsString(state);
 
             final String tableName = getTableName(RemoteReference.getInterfaceClass(reference), state.getClass());
-            final String itemId = generateDocumentId(reference);
+            final String itemId = generateDocumentId(reference, state);
 
             return DynamoDBUtils.getTable(dynamoDBConnection, tableName)
                     .thenAccept(table ->
@@ -152,10 +153,10 @@ public class DynamoDBStorageExtension implements StorageExtension
         return name;
     }
 
-    public String generateDocumentId(final RemoteReference<?> reference)
+    public String generateDocumentId(final RemoteReference<?> reference, final Object state)
     {
         Class<?> referenceClass = RemoteReference.getInterfaceClass(reference);
-        String idDecoration = referenceClass.getName();
+        String idDecoration = getIdDecoration(state, referenceClass.getName());
 
         String documentId = String.format(
                 "%s%s%s",
@@ -164,6 +165,20 @@ public class DynamoDBStorageExtension implements StorageExtension
                 idDecoration);
 
         return documentId;
+    }
+
+    public String getIdDecoration(final Object state, final String defaultIdDecoration)
+    {
+        if (state != null)
+        {
+            DynamoDBStateConfiguration dynamoDBStateConfiguration = state.getClass().getAnnotation(DynamoDBStateConfiguration.class);
+            if (dynamoDBStateConfiguration != null && !StringUtils.isNullOrEmpty(dynamoDBStateConfiguration.idDecorationOverride()))
+            {
+                return dynamoDBStateConfiguration.idDecorationOverride();
+            }
+        }
+
+        return defaultIdDecoration;
     }
 
     public String getTableName(final Class<?> referenceType, final Class<?> stateType)
