@@ -32,9 +32,9 @@ import cloud.orbit.actors.extensions.StorageExtension;
 import cloud.orbit.actors.runtime.RemoteReference;
 import cloud.orbit.concurrent.Task;
 import cloud.orbit.exception.UncheckedException;
+import cloud.orbit.util.StringUtils;
 
 import com.amazonaws.services.dynamodbv2.document.Item;
-import com.amazonaws.util.StringUtils;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -172,7 +172,7 @@ public class DynamoDBStorageExtension implements StorageExtension
         if (state != null)
         {
             DynamoDBStateConfiguration dynamoDBStateConfiguration = state.getClass().getAnnotation(DynamoDBStateConfiguration.class);
-            if (dynamoDBStateConfiguration != null && !StringUtils.isNullOrEmpty(dynamoDBStateConfiguration.idDecorationOverride()))
+            if (dynamoDBStateConfiguration != null && StringUtils.isNotBlank(dynamoDBStateConfiguration.idDecorationOverride()))
             {
                 return dynamoDBStateConfiguration.idDecorationOverride();
             }
@@ -184,7 +184,7 @@ public class DynamoDBStorageExtension implements StorageExtension
     public String getTableName(final Class<?> referenceType, final Class<?> stateType)
     {
         DynamoDBStateConfiguration dynamoDBStateConfiguration = stateType.getAnnotation(DynamoDBStateConfiguration.class);
-        if (dynamoDBStateConfiguration != null && !StringUtils.isNullOrEmpty(dynamoDBStateConfiguration.collection()))
+        if (dynamoDBStateConfiguration != null && StringUtils.isNotBlank(dynamoDBStateConfiguration.collection()))
         {
             return dynamoDBStateConfiguration.collection();
         }
