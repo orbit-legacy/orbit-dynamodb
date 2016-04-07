@@ -141,7 +141,9 @@ public class DynamoDBPersistenceTest extends StorageBaseTest
             // if we get here, the table exists, it may not be ready yet.
             ensureTableIsActive(tableName);
             ScanSpec scanSpec = new ScanSpec()
-                    .withAttributesToGet(DynamoDBUtils.FIELD_NAME_PRIMARY_ID)
+                    .withAttributesToGet(
+                            DynamoDBUtils.FIELD_NAME_PRIMARY_ID,
+                            DynamoDBUtils.FIELD_NAME_OWNING_ACTOR_TYPE)
                     .withConsistentRead(true);
 
             final ItemCollection<ScanOutcome> queryResults = table.scan(scanSpec);
@@ -151,8 +153,11 @@ public class DynamoDBPersistenceTest extends StorageBaseTest
 
             while (iterator.hasNext())
             {
-                iterator.next();
-                count++;
+                Item item = iterator.next();
+                if (actorInterface.getName().equals(item.getString(DynamoDBUtils.FIELD_NAME_OWNING_ACTOR_TYPE)))
+                {
+                    count++;
+                }
             }
 
             return count;
@@ -187,6 +192,18 @@ public class DynamoDBPersistenceTest extends StorageBaseTest
         return null;
     }
 
+    public String readOwningType(final String identity)
+    {
+        final Table table = dynamoDBConnection.getDynamoDB().getTable(getTableName());
+        final Item item = table.getItem("_id", generateItemId(identity));
+
+        if (item != null)
+        {
+            return item.getString(DynamoDBUtils.FIELD_NAME_OWNING_ACTOR_TYPE);
+        }
+        return null;
+    }
+
     protected String getTableName()
     {
         return DEFAULT_TABLE_NAME;
@@ -206,6 +223,18 @@ public class DynamoDBPersistenceTest extends StorageBaseTest
     public int heavyTestSize()
     {
         return 100;
+    }
+
+    @Test
+    public void testOwningType()
+    {
+        Stage stage = this.createStage();
+
+        final String actorId = "sampleData";
+        final Hello helloActor = Actor.getReference((Class<? extends Hello>)getActorInterfaceClass(), actorId);
+
+        helloActor.setSampleData(new HelloDto()).join();
+        assertEquals(getActorInterfaceClass().getName(), readOwningType(actorId));
     }
 
     @Test

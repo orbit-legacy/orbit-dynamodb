@@ -56,6 +56,7 @@ public class DynamoDBUtils
     final static long WAITING_FOR_ACTIVE_TABLE_STATUS_RETRY_DELAY_MILLIS = 600;
     final static public String FIELD_NAME_PRIMARY_ID = "_id";
     final static public String FIELD_NAME_DATA = "_state";
+    final static public String FIELD_NAME_OWNING_ACTOR_TYPE = "_owningType";
 
     private static ConcurrentMap<String, Table> tableCache = new ConcurrentHashMap<>();
 

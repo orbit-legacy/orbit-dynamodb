@@ -127,7 +127,8 @@ public class DynamoDBStorageExtension implements StorageExtension
             final ObjectMapper mapper = dynamoDBConnection.getMapper();
             final String serializedState = mapper.writeValueAsString(state);
 
-            final String tableName = getTableName(RemoteReference.getInterfaceClass(reference), state.getClass());
+            final Class<?> referenceType = RemoteReference.getInterfaceClass(reference);
+            final String tableName = getTableName(referenceType, state.getClass());
             final String itemId = generateDocumentId(reference, state);
 
             return DynamoDBUtils.getTable(dynamoDBConnection, tableName)
@@ -135,6 +136,7 @@ public class DynamoDBStorageExtension implements StorageExtension
                     {
                         final Item newItem = new Item()
                                 .withPrimaryKey(DynamoDBUtils.FIELD_NAME_PRIMARY_ID, itemId)
+                                .with(DynamoDBUtils.FIELD_NAME_OWNING_ACTOR_TYPE, referenceType.getName())
                                 .withJSON(DynamoDBUtils.FIELD_NAME_DATA, serializedState);
 
                         table.putItem(newItem);
