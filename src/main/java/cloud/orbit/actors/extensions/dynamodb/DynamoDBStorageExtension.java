@@ -100,17 +100,10 @@ public class DynamoDBStorageExtension implements StorageExtension
                 .thenApply(table -> table.getItem(DynamoDBUtils.FIELD_NAME_PRIMARY_ID, itemId))
                 .thenApply(item ->
                 {
-                    if(item != null)
+                    if (item != null)
                     {
-                        try
-                        {
-                            mapper.readerForUpdating(state).readValue(item.getJSON(DynamoDBUtils.FIELD_NAME_DATA));
-                            return true;
-                        }
-                        catch(IOException e)
-                        {
-                            throw new UncheckedException(e);
-                        }
+                        readStateInternal(state, item, mapper);
+                        return true;
                     }
                     else
                     {
@@ -122,31 +115,17 @@ public class DynamoDBStorageExtension implements StorageExtension
     @Override
     public Task<Void> writeState(final RemoteReference<?> reference, final Object state)
     {
-        try
-        {
-            final ObjectMapper mapper = dynamoDBConnection.getMapper();
-            final String serializedState = mapper.writeValueAsString(state);
+        final Class<?> referenceType = RemoteReference.getInterfaceClass(reference);
+        final String tableName = getTableName(referenceType, state.getClass());
+        final String itemId = generateDocumentId(reference, state);
 
-            final Class<?> referenceType = RemoteReference.getInterfaceClass(reference);
-            final String tableName = getTableName(referenceType, state.getClass());
-            final String itemId = generateDocumentId(reference, state);
+        return DynamoDBUtils.getTable(dynamoDBConnection, tableName)
+                .thenAccept(table ->
+                {
+                    final Item newItem = generatePutItem(reference, state, itemId, dynamoDBConnection.getMapper());
 
-            return DynamoDBUtils.getTable(dynamoDBConnection, tableName)
-                    .thenAccept(table ->
-                    {
-                        final Item newItem = new Item()
-                                .withPrimaryKey(DynamoDBUtils.FIELD_NAME_PRIMARY_ID, itemId)
-                                .with(DynamoDBUtils.FIELD_NAME_OWNING_ACTOR_TYPE, referenceType.getName())
-                                .withJSON(DynamoDBUtils.FIELD_NAME_DATA, serializedState);
-
-                        table.putItem(newItem);
-                    });
-
-        }
-        catch(JsonProcessingException e)
-        {
-            throw new UncheckedException(e);
-        }
+                    table.putItem(newItem);
+                });
     }
 
     @Override
@@ -207,5 +186,40 @@ public class DynamoDBStorageExtension implements StorageExtension
     public void setDefaultTableName(final String defaultTableName)
     {
         this.defaultTableName = defaultTableName;
+    }
+
+    protected DynamoDBConnection getDynamoDBConnection()
+    {
+        return dynamoDBConnection;
+    }
+
+    protected void readStateInternal(final Object state, final Item item, final ObjectMapper mapper)
+    {
+        try
+        {
+            mapper.readerForUpdating(state).readValue(item.getJSON(DynamoDBUtils.FIELD_NAME_DATA));
+        }
+        catch (IOException e)
+        {
+            throw new UncheckedException(e);
+        }
+    }
+
+    protected Item generatePutItem(final RemoteReference<?> reference, final Object state, final String itemId, final ObjectMapper mapper)
+    {
+        try
+        {
+            final Class<?> referenceType = RemoteReference.getInterfaceClass(reference);
+            final String serializedState = mapper.writeValueAsString(state);
+
+            return new Item()
+                    .withPrimaryKey(DynamoDBUtils.FIELD_NAME_PRIMARY_ID, itemId)
+                    .with(DynamoDBUtils.FIELD_NAME_OWNING_ACTOR_TYPE, referenceType.getName())
+                    .withJSON(DynamoDBUtils.FIELD_NAME_DATA, serializedState);
+        }
+        catch (JsonProcessingException e)
+        {
+            throw new UncheckedException(e);
+        }
     }
 }
