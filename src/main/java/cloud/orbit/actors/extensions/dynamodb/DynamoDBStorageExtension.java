@@ -35,6 +35,7 @@ import cloud.orbit.exception.UncheckedException;
 import cloud.orbit.util.StringUtils;
 
 import com.amazonaws.services.dynamodbv2.document.Item;
+import com.amazonaws.services.dynamodbv2.document.spec.GetItemSpec;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -97,7 +98,13 @@ public class DynamoDBStorageExtension implements StorageExtension
         final String itemId = generateDocumentId(reference, state);
 
         return DynamoDBUtils.getTable(dynamoDBConnection, tableName)
-                .thenApply(table -> table.getItem(DynamoDBUtils.FIELD_NAME_PRIMARY_ID, itemId))
+                .thenApply(table -> {
+                    GetItemSpec getItemSpec = new GetItemSpec()
+                            .withPrimaryKey(DynamoDBUtils.FIELD_NAME_PRIMARY_ID, itemId)
+                            .withConsistentRead(true);
+
+                    return table.getItem(getItemSpec);
+                })
                 .thenApply(item ->
                 {
                     if(item != null)
