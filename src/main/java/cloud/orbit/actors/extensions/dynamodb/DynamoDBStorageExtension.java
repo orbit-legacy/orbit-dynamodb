@@ -82,8 +82,13 @@ public class DynamoDBStorageExtension implements StorageExtension
     @Override
     public Task<Void> clearState(final RemoteReference<?> reference, final Object state)
     {
-        final String tableName = getTableName(RemoteReference.getInterfaceClass(reference), state.getClass());
-        final String itemId = generateDocumentId(reference, state);
+        return clearState(reference, state, state.getClass());
+    }
+
+    public Task<Void> clearState(final RemoteReference<?> reference, final Object state, final Class<?> stateClass)
+    {
+        final String tableName = getTableName(RemoteReference.getInterfaceClass(reference), stateClass);
+        final String itemId = generateDocumentId(reference, stateClass);
 
         return DynamoDBUtils.getTable(dynamoDBConnection, tableName)
                 .thenAccept(table -> table.deleteItem(DynamoDBUtils.FIELD_NAME_PRIMARY_ID, itemId));
@@ -93,9 +98,14 @@ public class DynamoDBStorageExtension implements StorageExtension
     @Override
     public Task<Boolean> readState(final RemoteReference<?> reference, final Object state)
     {
+        return readState(reference, state, state.getClass());
+    }
+
+    public Task<Boolean> readState(final RemoteReference<?> reference, final Object state, final Class<?> stateClass)
+    {
         final ObjectMapper mapper = dynamoDBConnection.getMapper();
-        final String tableName = getTableName(RemoteReference.getInterfaceClass(reference), state.getClass());
-        final String itemId = generateDocumentId(reference, state);
+        final String tableName = getTableName(RemoteReference.getInterfaceClass(reference), stateClass);
+        final String itemId = generateDocumentId(reference, stateClass);
 
         return DynamoDBUtils.getTable(dynamoDBConnection, tableName)
                 .thenApply(table -> {
@@ -109,7 +119,7 @@ public class DynamoDBStorageExtension implements StorageExtension
                 {
                     if (item != null)
                     {
-                        readStateInternal(state, item, mapper);
+                        readStateInternal(state, stateClass, item, mapper);
                         return true;
                     }
                     else
@@ -122,14 +132,19 @@ public class DynamoDBStorageExtension implements StorageExtension
     @Override
     public Task<Void> writeState(final RemoteReference<?> reference, final Object state)
     {
+        return writeState(reference, state, state.getClass());
+    }
+
+    public Task<Void> writeState(final RemoteReference<?> reference, final Object state, final Class<?> stateClass)
+    {
         final Class<?> referenceType = RemoteReference.getInterfaceClass(reference);
-        final String tableName = getTableName(referenceType, state.getClass());
-        final String itemId = generateDocumentId(reference, state);
+        final String tableName = getTableName(referenceType, stateClass);
+        final String itemId = generateDocumentId(reference, stateClass);
 
         return DynamoDBUtils.getTable(dynamoDBConnection, tableName)
                 .thenAccept(table ->
                 {
-                    final Item newItem = generatePutItem(reference, state, itemId, dynamoDBConnection.getMapper());
+                    final Item newItem = generatePutItem(reference, state, stateClass, itemId, dynamoDBConnection.getMapper());
 
                     table.putItem(newItem);
                 });
@@ -141,10 +156,10 @@ public class DynamoDBStorageExtension implements StorageExtension
         return name;
     }
 
-    public String generateDocumentId(final RemoteReference<?> reference, final Object state)
+    public String generateDocumentId(final RemoteReference<?> reference, final Class<?> stateClass)
     {
         Class<?> referenceClass = RemoteReference.getInterfaceClass(reference);
-        String idDecoration = getIdDecoration(state, referenceClass.getName());
+        String idDecoration = getIdDecoration(stateClass, referenceClass.getName());
 
         String documentId = String.format(
                 "%s%s%s",
@@ -155,15 +170,12 @@ public class DynamoDBStorageExtension implements StorageExtension
         return documentId;
     }
 
-    public String getIdDecoration(final Object state, final String defaultIdDecoration)
+    public String getIdDecoration(final Class<?> stateClass, final String defaultIdDecoration)
     {
-        if (state != null)
+        DynamoDBStateConfiguration dynamoDBStateConfiguration = stateClass.getAnnotation(DynamoDBStateConfiguration.class);
+        if (dynamoDBStateConfiguration != null && StringUtils.isNotBlank(dynamoDBStateConfiguration.idDecorationOverride()))
         {
-            DynamoDBStateConfiguration dynamoDBStateConfiguration = state.getClass().getAnnotation(DynamoDBStateConfiguration.class);
-            if (dynamoDBStateConfiguration != null && StringUtils.isNotBlank(dynamoDBStateConfiguration.idDecorationOverride()))
-            {
-                return dynamoDBStateConfiguration.idDecorationOverride();
-            }
+            return dynamoDBStateConfiguration.idDecorationOverride();
         }
 
         return defaultIdDecoration;
@@ -200,10 +212,17 @@ public class DynamoDBStorageExtension implements StorageExtension
         return dynamoDBConnection;
     }
 
-    protected void readStateInternal(final Object state, final Item item, final ObjectMapper mapper)
+    protected void readStateInternal(final Object state, final Class<?> stateClass, final Item item, final ObjectMapper mapper)
     {
         try
         {
+            if (!state.getClass().equals(stateClass))
+            {
+                throw new IllegalArgumentException(String.format("State class (%s) did not match expected class (%s), Storage Extension should override generatePutItem method",
+                        state.getClass().getName(),
+                        stateClass.getName()));
+            }
+
             mapper.readerForUpdating(state).readValue(item.getJSON(DynamoDBUtils.FIELD_NAME_DATA));
         }
         catch (IOException e)
@@ -212,17 +231,30 @@ public class DynamoDBStorageExtension implements StorageExtension
         }
     }
 
-    protected Item generatePutItem(final RemoteReference<?> reference, final Object state, final String itemId, final ObjectMapper mapper)
+    protected Item generatePutItem(final RemoteReference<?> reference, final Object state, final Class<?> stateClass, final String itemId, final ObjectMapper mapper)
     {
         try
         {
-            final Class<?> referenceType = RemoteReference.getInterfaceClass(reference);
-            final String serializedState = mapper.writeValueAsString(state);
+            if (state != null && !state.getClass().equals(stateClass))
+            {
+                throw new IllegalArgumentException(String.format("State class (%s) did not match expected class (%s), Storage Extension should override generatePutItem method",
+                        state.getClass().getName(),
+                        stateClass.getName()));
+            }
 
-            return new Item()
+            final Class<?> referenceType = RemoteReference.getInterfaceClass(reference);
+
+            final Item item = new Item()
                     .withPrimaryKey(DynamoDBUtils.FIELD_NAME_PRIMARY_ID, itemId)
-                    .with(DynamoDBUtils.FIELD_NAME_OWNING_ACTOR_TYPE, referenceType.getName())
-                    .withJSON(DynamoDBUtils.FIELD_NAME_DATA, serializedState);
+                    .with(DynamoDBUtils.FIELD_NAME_OWNING_ACTOR_TYPE, referenceType.getName());
+
+            if (state != null)
+            {
+                final String serializedState = mapper.writeValueAsString(state);
+                item.withJSON(DynamoDBUtils.FIELD_NAME_DATA, serializedState);
+            }
+
+            return item;
         }
         catch (JsonProcessingException e)
         {
