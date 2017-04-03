@@ -75,6 +75,12 @@ public class DynamoDBConfiguration
             return this;
         }
 
+        public Builder withMapperConfigurer(final DynamoDBMapperConfigurer mapperConfigurer)
+        {
+            dynamoConfig.setMapperConfigurer(mapperConfigurer);
+            return this;
+        }
+
         public DynamoDBConfiguration build()
         {
             return dynamoConfig;
@@ -87,6 +93,7 @@ public class DynamoDBConfiguration
     private String sessionToken;
     private String region;
     private String endpoint;
+    private DynamoDBMapperConfigurer mapperConfigurer;
 
     public AmazonCredentialType getCredentialType()
     {
@@ -147,4 +154,8 @@ public class DynamoDBConfiguration
     {
         this.endpoint = endpoint;
     }
+
+    public DynamoDBMapperConfigurer getMapperConfigurer() { return mapperConfigurer; }
+
+    public void setMapperConfigurer(DynamoDBMapperConfigurer mapperConfigurer) { this.mapperConfigurer = mapperConfigurer; }
 }

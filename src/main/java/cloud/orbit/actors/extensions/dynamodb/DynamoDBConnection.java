@@ -75,7 +75,7 @@ public class DynamoDBConnection
     {
         connectionId = UUID.randomUUID();
         initializeDynamoDB(dynamoDBConfiguration);
-        initializeMapper();
+        initializeMapper(dynamoDBConfiguration);
     }
 
     public AmazonDynamoDBAsyncClient getDynamoClient()
@@ -93,7 +93,7 @@ public class DynamoDBConnection
         return mapper;
     }
 
-    private void initializeMapper()
+    private void initializeMapper(DynamoDBConfiguration dynamoDBConfiguration)
     {
         final SimpleModule serializersModule = createSerializersForMapper();
 
@@ -112,6 +112,10 @@ public class DynamoDBConnection
                 .withCreatorVisibility(JsonAutoDetect.Visibility.NONE));
 
         mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+
+        if (dynamoDBConfiguration.getMapperConfigurer() != null) {
+            mapper = dynamoDBConfiguration.getMapperConfigurer().configure(mapper);
+        }
     }
 
     /**
