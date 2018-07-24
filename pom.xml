@@ -42,7 +42,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     <url>https://github.com/orbit/orbit-dynamodb/</url>
 
     <properties>
-        <orbit.version>0.9.18</orbit.version>
+        <orbit.version>1.10.0</orbit.version>
     </properties>
 
     <scm>
